@@ -104,20 +104,23 @@ struct MyTestF {
 };
 
 UTEST_F_SETUP(MyTestF) {
+  const int magic_number = 42;
   ASSERT_EQ(0, utest_fixture->foo);
-  utest_fixture->foo = 42;
+  utest_fixture->foo = magic_number;
 }
 
 UTEST_F_TEARDOWN(MyTestF) { ASSERT_EQ(13, utest_fixture->foo); }
 
 UTEST_F(MyTestF, c) {
+  const int magic_number = 13;
   ASSERT_EQ(42, utest_fixture->foo);
-  utest_fixture->foo = 13;
+  utest_fixture->foo = magic_number;
 }
 
 UTEST_F(MyTestF, c2) {
+  const int magic_number = 13;
   ASSERT_EQ(42, utest_fixture->foo);
-  utest_fixture->foo = 13;
+  utest_fixture->foo = magic_number;
 }
 
 struct MyTestI {
@@ -126,25 +129,28 @@ struct MyTestI {
 };
 
 UTEST_I_SETUP(MyTestI) {
-  ASSERT_EQ(0u, utest_fixture->foo);
-  ASSERT_EQ(0u, utest_fixture->bar);
-  utest_fixture->foo = 42;
+  const int magic_number = 42;
+  ASSERT_EQ(0U, utest_fixture->foo);
+  ASSERT_EQ(0U, utest_fixture->bar);
+  utest_fixture->foo = magic_number;
   utest_fixture->bar = utest_index;
 }
 
 UTEST_I_TEARDOWN(MyTestI) {
-  ASSERT_EQ(13u, utest_fixture->foo);
+  ASSERT_EQ(13U, utest_fixture->foo);
   ASSERT_EQ(utest_index, utest_fixture->bar);
 }
 
 UTEST_I(MyTestI, c, 2) {
-  ASSERT_GT(2u, utest_fixture->bar);
-  utest_fixture->foo = 13;
+  const int magic_number = 13;
+  ASSERT_GT(2U, utest_fixture->bar);
+  utest_fixture->foo = magic_number;
 }
 
 UTEST_I(MyTestI, c2, 128) {
-  ASSERT_GT(128u, utest_fixture->bar);
-  utest_fixture->foo = 13;
+  const int magic_number = 13;
+  ASSERT_GT(128U, utest_fixture->bar);
+  utest_fixture->foo = magic_number;
 }
 
 UTEST(c, Float) {
@@ -225,13 +231,14 @@ UTEST(c, ULong) {
 }
 
 UTEST(c, Ptr) {
-  char foo = 42;
+  const char foo = 42;
   EXPECT_NE(&foo, &foo + 1);
 }
 
 UTEST(c, VoidPtr) {
-  void *foo = 0;
-  EXPECT_NE(foo, (char *)foo + 1);
+  const void* foo = 0;
+  /* cppcheck-suppress nullPointerArithmetic */
+  EXPECT_NE(foo, (char*)foo + 1);
 }
 
 static const int data[4] = {42, 13, 6, -53};

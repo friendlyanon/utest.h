@@ -12,8 +12,15 @@ UTEST(type_printers, stdc) {
 #error
 #endif
 
-  FILE *old = utest_state.output;
-  FILE *out = tmpfile();
+  FILE* old = utest_state.output;
+#ifdef _MSC_VER
+#pragma warning(push, 1)
+#pragma warning(disable : 4996)
+#endif
+  FILE* out = tmpfile();
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
   ASSERT_TRUE(!!out);
   utest_state.output = out;
 
@@ -23,9 +30,9 @@ UTEST(type_printers, stdc) {
   unsigned u = UINT_MAX;
   unsigned long ul = ULONG_MAX;
   unsigned long long ull = ULLONG_MAX;
-  float f = 0.f;
+  float f = 0.F;
   double d = 0.;
-  long double ld = 0.l;
+  long double ld = 0.L;
   utest_type_printer(i);
   utest_type_printer(l);
   utest_type_printer(ll);
@@ -36,13 +43,15 @@ UTEST(type_printers, stdc) {
   utest_type_printer(d);
   utest_type_printer(ld);
 
-  char expected[1024] = {0};
+#define CAPACITY (1024)
+  char expected[CAPACITY] = {0};
   size_t expected_len =
       UTEST_SNPRINTF(expected, sizeof expected - 1, "%d%ld%lld%u%lu%llu%f%f%Lf",
                      i, l, ll, u, ul, ull, f, d, ld);
   fflush(out);
   rewind(out);
-  char buf[1024] = {'\0'};
+  char buf[CAPACITY] = {'\0'};
+#undef CAPACITY
   const size_t n = fread(buf, 1, sizeof buf, out);
   fclose(out);
   utest_state.output = old;

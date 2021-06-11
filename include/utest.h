@@ -46,6 +46,10 @@
 #pragma warning(push, 1)
 #endif
 
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+#define __STDC_WANT_LIB_EXT1__ 1
+#endif
+
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 typedef __int64 utest_int64_t;
 typedef unsigned __int64 utest_uint64_t;
@@ -72,16 +76,22 @@ typedef uint64_t utest_uint64_t;
 #endif
 
 #if defined(_MSC_VER)
-// define UTEST_USE_OLD_QPC before #include "utest.h" to use old QueryPerformanceCounter
+/*
+   define UTEST_USE_OLD_QPC before #include "utest.h" to use old
+   QueryPerformanceCounter
+*/
 #ifndef UTEST_USE_OLD_QPC
 #pragma warning(push, 0)
 #include <Windows.h>
 #pragma warning(pop)
 
 typedef LARGE_INTEGER utest_large_integer;
-#else 
-//use old QueryPerformanceCounter definitions (not sure is this needed in some edge cases or not)
-//on Win7 with VS2015 these extern declaration cause "second C linkage of overloaded function not allowed" error
+#else
+/*
+   use old QueryPerformanceCounter definitions (not sure is this needed in some
+   edge cases or not) on Win7 with VS2015 these extern declaration cause "second
+   C linkage of overloaded function not allowed" error
+*/
 typedef union {
   struct {
     unsigned long LowPart;
@@ -95,9 +105,9 @@ typedef union {
 } utest_large_integer;
 
 UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceCounter(
-    utest_large_integer *);
+    utest_large_integer*);
 UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
-    utest_large_integer *);
+    utest_large_integer*);
 #endif
 #elif defined(__linux__)
 
@@ -119,7 +129,7 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 #include <sys/syscall.h>
 #include <unistd.h>
 #endif
-#else // Other libc implementations
+#else /* Other libc implementations */
 #include <time.h>
 #define UTEST_USE_CLOCKGETTIME
 #endif
@@ -198,8 +208,8 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 #define UTEST_EXTERN extern "C"
 #define UTEST_NULL NULL
 #else
-#define UTEST_CAST(type, x) ((type)x)
-#define UTEST_PTR_CAST(type, x) ((type)x)
+#define UTEST_CAST(type, x) ((type)(x))
+#define UTEST_PTR_CAST(type, x) ((type)(x))
 #define UTEST_EXTERN extern
 #define UTEST_NULL 0
 #endif
@@ -207,7 +217,7 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 #ifdef _MSC_VER
 /*
     io.h contains definitions for some structures with natural padding. This is
-    uninteresting, but for some reason MSVC's behaviour is to warn about
+    uninteresting, but for some reason MSVC's behavior is to warn about
     including this system header. That *is* interesting
 */
 #pragma warning(disable : 4820)
@@ -216,7 +226,7 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 #pragma warning(pop)
 #define UTEST_COLOUR_OUTPUT() (_isatty(_fileno(stdout)))
 #else
-#if  defined(__EMSCRIPTEN__)
+#if defined(__EMSCRIPTEN__)
 #include <emscripten/html5.h>
 #define UTEST_COLOUR_OUTPUT() false
 #else
@@ -225,8 +235,8 @@ UTEST_C_FUNC __declspec(dllimport) int __stdcall QueryPerformanceFrequency(
 #endif
 #endif
 
-static UTEST_INLINE void *utest_realloc(void *const pointer, size_t new_size) {
-  void *const new_pointer = realloc(pointer, new_size);
+static UTEST_INLINE void* utest_realloc(void* const pointer, size_t new_size) {
+  void* const new_pointer = realloc(pointer, new_size);
 
   if (UTEST_NULL == new_pointer) {
     free(new_pointer);
@@ -236,15 +246,16 @@ static UTEST_INLINE void *utest_realloc(void *const pointer, size_t new_size) {
 }
 
 static UTEST_INLINE utest_int64_t utest_ns(void) {
+#define SEC_TO_NSEC (1000 * 1000 * 1000)
 #ifdef _MSC_VER
   utest_large_integer counter;
   utest_large_integer frequency;
   QueryPerformanceCounter(&counter);
   QueryPerformanceFrequency(&frequency);
   return UTEST_CAST(utest_int64_t,
-                    (counter.QuadPart * 1000000000) / frequency.QuadPart);
+                    (counter.QuadPart * SEC_TO_NSEC) / frequency.QuadPart);
 #elif defined(__linux) && defined(__STRICT_ANSI__)
-  return UTEST_CAST(utest_int64_t, clock()) * 1000000000 / CLOCKS_PER_SEC;
+  return UTEST_CAST(utest_int64_t, clock()) * SEC_TO_NSEC / CLOCKS_PER_SEC;
 #elif defined(__linux)
   struct timespec ts;
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
@@ -257,26 +268,29 @@ static UTEST_INLINE utest_int64_t utest_ns(void) {
   syscall(SYS_clock_gettime, cid, &ts);
 #endif
 #endif
-  return UTEST_CAST(utest_int64_t, ts.tv_sec) * 1000 * 1000 * 1000 + ts.tv_nsec;
+  return UTEST_CAST(utest_int64_t, ts.tv_sec) * SEC_TO_NSEC + ts.tv_nsec;
 #elif __APPLE__
   return UTEST_CAST(utest_int64_t, mach_absolute_time());
-#elif __EMSCRIPTEN__	                                    
-	return emscripten_performance_now()*1000000.0; 
+#elif __EMSCRIPTEN__
+#define MSEC_TO_NSEC (1000000.0)
+  return emscripten_performance_now() * MSEC_TO_NSEC;
+#undef MSEC_TO_NSEC
 #endif
+#undef SEC_TO_NSEC
 }
 
-typedef void (*utest_testcase_t)(int *, size_t);
+typedef void (*utest_testcase_t)(int*, size_t);
 
 struct utest_test_state_s {
   utest_testcase_t func;
   size_t index;
-  char *name;
+  char* name;
 };
 
 struct utest_state_s {
-  struct utest_test_state_s *tests;
+  struct utest_test_state_s* tests;
   size_t tests_length;
-  FILE *output;
+  FILE* output;
 };
 
 /* extern to the global state utest needs to execute */
@@ -298,14 +312,29 @@ UTEST_EXTERN struct utest_state_s utest_state;
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wvariadic-macros"
 #pragma clang diagnostic ignored "-Wc++98-compat-pedantic"
+#elif defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvariadic-macros"
 #endif
+
 #define UTEST_PRINTF(...)                                                      \
   if (utest_state.output) {                                                    \
     fprintf(utest_state.output, __VA_ARGS__);                                  \
   }                                                                            \
   printf(__VA_ARGS__)
+
 #ifdef __clang__
 #pragma clang diagnostic pop
+#elif defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L) &&              \
+    defined(__STDC_LIB_EXT1__)
+#define UTEST_MEMSET(dest, fill, count)                                        \
+  memset_s(&(dest), sizeof(dest), fill, count)
+#else
+#define UTEST_MEMSET(dest, fill, count) memset(&(dest), fill, count)
 #endif
 
 #ifdef __clang__
@@ -317,7 +346,18 @@ UTEST_EXTERN struct utest_state_s utest_state;
 #ifdef _MSC_VER
 #define UTEST_SNPRINTF(BUFFER, N, ...) _snprintf_s(BUFFER, N, N, __VA_ARGS__)
 #else
+
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvariadic-macros"
+#endif
+
 #define UTEST_SNPRINTF(...) snprintf(__VA_ARGS__)
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 #endif
 
 #ifdef __clang__
@@ -368,8 +408,8 @@ UTEST_WEAK UTEST_OVERLOADABLE void utest_type_printer(long unsigned int i) {
   UTEST_PRINTF("%lu", i);
 }
 
-UTEST_WEAK UTEST_OVERLOADABLE void utest_type_printer(const void *p);
-UTEST_WEAK UTEST_OVERLOADABLE void utest_type_printer(const void *p) {
+UTEST_WEAK UTEST_OVERLOADABLE void utest_type_printer(const void* p);
+UTEST_WEAK UTEST_OVERLOADABLE void utest_type_printer(const void* p) {
   UTEST_PRINTF("%p", p);
 }
 
@@ -401,31 +441,57 @@ utest_type_printer(long long unsigned int i) {
 
 #endif
 #elif defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201112L)
+
+#ifdef __GNUC__
+#define UTEST_SUPPRESS_GCC_WARNINGS_BEGIN                                      \
+  _Pragma("GCC diagnostic push")                                               \
+      _Pragma("GCC diagnostic ignored \"-Wpointer-arith\"")                    \
+          _Pragma("GCC diagnostic ignored \"-Wformat=\"")
+#define UTEST_SUPPRESS_GCC_WARNINGS_END _Pragma("GCC diagnostic pop")
+#else
+#define UTEST_SUPPRESS_GCC_WARNINGS_BEGIN
+#define UTEST_SUPPRESS_GCC_WARNINGS_END
+#endif
+
 #define utest_type_printer(val)                                                \
-  UTEST_PRINTF(_Generic((val), signed char                                     \
-                        : "%d", unsigned char                                  \
-                        : "%u", short                                          \
-                        : "%d", unsigned short                                 \
-                        : "%u", int                                            \
-                        : "%d", long                                           \
-                        : "%ld", long long                                     \
-                        : "%lld", unsigned                                     \
-                        : "%u", unsigned long                                  \
-                        : "%lu", unsigned long long                            \
-                        : "%llu", float                                        \
-                        : "%f", double                                         \
-                        : "%f", long double                                    \
-                        : "%Lf", default                                       \
-                        : _Generic((val - val), ptrdiff_t                      \
-                                   : "%p", default                             \
-                                   : "undef")),                                \
-               (val))
+  do {                                                                         \
+    UTEST_SUPPRESS_GCC_WARNINGS_BEGIN                                          \
+    UTEST_PRINTF(_Generic((val), signed char                                   \
+                          : "%d", unsigned char                                \
+                          : "%u", short                                        \
+                          : "%d", unsigned short                               \
+                          : "%u", int                                          \
+                          : "%d", long                                         \
+                          : "%ld", long long                                   \
+                          : "%lld", unsigned                                   \
+                          : "%u", unsigned long                                \
+                          : "%lu", unsigned long long                          \
+                          : "%llu", float                                      \
+                          : "%f", double                                       \
+                          : "%f", long double                                  \
+                          : "%Lf", default                                     \
+                          : _Generic((val - val), ptrdiff_t                    \
+                                     : "%p", default                           \
+                                     : "undef")),                              \
+                 (val));                                                       \
+    UTEST_SUPPRESS_GCC_WARNINGS_END                                            \
+  } while (0)
 #else
 /*
    we don't have the ability to print the values we got, so we create a macro
    to tell our users we can't do anything fancy
 */
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wvariadic-macros"
+#endif
+
 #define utest_type_printer(...) UTEST_PRINTF("undef")
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+
 #endif
 
 #ifdef _MSC_VER
@@ -492,9 +558,11 @@ utest_type_printer(long long unsigned int i) {
 #elif defined(__GNUC__)
 #define UTEST_EXPECT(x, y, cond)                                               \
   UTEST_SURPRESS_WARNING_BEGIN do {                                            \
-    UTEST_AUTO(x) xEval = (x);                                                 \
+    _Pragma("GCC diagnostic push")                                             \
+        _Pragma("GCC diagnostic ignored \"-Wpointer-arith\"") UTEST_AUTO(x)    \
+            xEval = (x);                                                       \
     UTEST_AUTO(y) yEval = (y);                                                 \
-    if (!((xEval)cond(yEval))) {                                               \
+    _Pragma("GCC diagnostic pop") if (!((xEval)cond(yEval))) {                 \
       UTEST_PRINTF("%s:%u: Failure\n", __FILE__, __LINE__);                    \
       UTEST_PRINTF("  Expected : ");                                           \
       utest_type_printer(xEval);                                               \
@@ -625,9 +693,11 @@ utest_type_printer(long long unsigned int i) {
 #elif defined(__GNUC__)
 #define UTEST_ASSERT(x, y, cond)                                               \
   UTEST_SURPRESS_WARNING_BEGIN do {                                            \
-    UTEST_AUTO(x) xEval = (x);                                                 \
+    _Pragma("GCC diagnostic push")                                             \
+        _Pragma("GCC diagnostic ignored \"-Wpointer-arith\"") UTEST_AUTO(x)    \
+            xEval = (x);                                                       \
     UTEST_AUTO(y) yEval = (y);                                                 \
-    if (!((xEval)cond(yEval))) {                                               \
+    _Pragma("GCC diagnostic pop") if (!((xEval)cond(yEval))) {                 \
       UTEST_PRINTF("%s:%u: Failure\n", __FILE__, __LINE__);                    \
       UTEST_PRINTF("  Expected : ");                                           \
       utest_type_printer(xEval);                                               \
@@ -741,46 +811,46 @@ utest_type_printer(long long unsigned int i) {
 
 #define UTEST(SET, NAME)                                                       \
   UTEST_EXTERN struct utest_state_s utest_state;                               \
-  static void utest_run_##SET##_##NAME(int *utest_result);                     \
-  static void utest_##SET##_##NAME(int *utest_result, size_t utest_index) {    \
+  static void utest_run_##SET##_##NAME(int* utest_result);                     \
+  static void utest_##SET##_##NAME(int* utest_result, size_t utest_index) {    \
     (void)utest_index;                                                         \
     utest_run_##SET##_##NAME(utest_result);                                    \
   }                                                                            \
   UTEST_INITIALIZER(utest_register_##SET##_##NAME) {                           \
     const size_t index = utest_state.tests_length++;                           \
-    const char *name_part = #SET "." #NAME;                                    \
+    const char* name_part = #SET "." #NAME;                                    \
     const size_t name_size = strlen(name_part) + 1;                            \
-    char *name = UTEST_PTR_CAST(char *, malloc(name_size));                    \
-    utest_state.tests = UTEST_PTR_CAST(                                        \
-        struct utest_test_state_s *,                                           \
-        utest_realloc(UTEST_PTR_CAST(void *, utest_state.tests),               \
-                      sizeof(struct utest_test_state_s) *                      \
-                          utest_state.tests_length));                          \
+    char* name = UTEST_PTR_CAST(char*, malloc(name_size));                     \
+    utest_state.tests =                                                        \
+        UTEST_PTR_CAST(struct utest_test_state_s*,                             \
+                       utest_realloc(UTEST_PTR_CAST(void*, utest_state.tests), \
+                                     sizeof(struct utest_test_state_s) *       \
+                                         utest_state.tests_length));           \
     utest_state.tests[index].func = &utest_##SET##_##NAME;                     \
     utest_state.tests[index].name = name;                                      \
     utest_state.tests[index].index = 0;                                        \
     UTEST_SNPRINTF(name, name_size, "%s", name_part);                          \
   }                                                                            \
-  void utest_run_##SET##_##NAME(int *utest_result)
+  void utest_run_##SET##_##NAME(int* utest_result)
 
 #define UTEST_F_SETUP(FIXTURE)                                                 \
-  static void utest_f_setup_##FIXTURE(int *utest_result,                       \
-                                      struct FIXTURE *utest_fixture)
+  static void utest_f_setup_##FIXTURE(int* utest_result,                       \
+                                      struct FIXTURE* utest_fixture)
 
 #define UTEST_F_TEARDOWN(FIXTURE)                                              \
-  static void utest_f_teardown_##FIXTURE(int *utest_result,                    \
-                                         struct FIXTURE *utest_fixture)
+  static void utest_f_teardown_##FIXTURE(int* utest_result,                    \
+                                         struct FIXTURE* utest_fixture)
 
 #define UTEST_F(FIXTURE, NAME)                                                 \
   UTEST_EXTERN struct utest_state_s utest_state;                               \
-  static void utest_f_setup_##FIXTURE(int *, struct FIXTURE *);                \
-  static void utest_f_teardown_##FIXTURE(int *, struct FIXTURE *);             \
-  static void utest_run_##FIXTURE##_##NAME(int *, struct FIXTURE *);           \
-  static void utest_f_##FIXTURE##_##NAME(int *utest_result,                    \
+  static void utest_f_setup_##FIXTURE(int*, struct FIXTURE*);                  \
+  static void utest_f_teardown_##FIXTURE(int*, struct FIXTURE*);               \
+  static void utest_run_##FIXTURE##_##NAME(int*, struct FIXTURE*);             \
+  static void utest_f_##FIXTURE##_##NAME(int* utest_result,                    \
                                          size_t utest_index) {                 \
     struct FIXTURE fixture;                                                    \
     (void)utest_index;                                                         \
-    memset(&fixture, 0, sizeof(fixture));                                      \
+    UTEST_MEMSET(fixture, 0, sizeof(fixture));                                 \
     utest_f_setup_##FIXTURE(utest_result, &fixture);                           \
     if (0 != *utest_result) {                                                  \
       return;                                                                  \
@@ -790,36 +860,36 @@ utest_type_printer(long long unsigned int i) {
   }                                                                            \
   UTEST_INITIALIZER(utest_register_##FIXTURE##_##NAME) {                       \
     const size_t index = utest_state.tests_length++;                           \
-    const char *name_part = #FIXTURE "." #NAME;                                \
+    const char* name_part = #FIXTURE "." #NAME;                                \
     const size_t name_size = strlen(name_part) + 1;                            \
-    char *name = UTEST_PTR_CAST(char *, malloc(name_size));                    \
-    utest_state.tests = UTEST_PTR_CAST(                                        \
-        struct utest_test_state_s *,                                           \
-        utest_realloc(UTEST_PTR_CAST(void *, utest_state.tests),               \
-                      sizeof(struct utest_test_state_s) *                      \
-                          utest_state.tests_length));                          \
+    char* name = UTEST_PTR_CAST(char*, malloc(name_size));                     \
+    utest_state.tests =                                                        \
+        UTEST_PTR_CAST(struct utest_test_state_s*,                             \
+                       utest_realloc(UTEST_PTR_CAST(void*, utest_state.tests), \
+                                     sizeof(struct utest_test_state_s) *       \
+                                         utest_state.tests_length));           \
     utest_state.tests[index].func = &utest_f_##FIXTURE##_##NAME;               \
     utest_state.tests[index].name = name;                                      \
     UTEST_SNPRINTF(name, name_size, "%s", name_part);                          \
   }                                                                            \
-  void utest_run_##FIXTURE##_##NAME(int *utest_result,                         \
-                                    struct FIXTURE *utest_fixture)
+  void utest_run_##FIXTURE##_##NAME(int* utest_result,                         \
+                                    struct FIXTURE* utest_fixture)
 
 #define UTEST_I_SETUP(FIXTURE)                                                 \
   static void utest_i_setup_##FIXTURE(                                         \
-      int *utest_result, struct FIXTURE *utest_fixture, size_t utest_index)
+      int* utest_result, struct FIXTURE* utest_fixture, size_t utest_index)
 
 #define UTEST_I_TEARDOWN(FIXTURE)                                              \
   static void utest_i_teardown_##FIXTURE(                                      \
-      int *utest_result, struct FIXTURE *utest_fixture, size_t utest_index)
+      int* utest_result, struct FIXTURE* utest_fixture, size_t utest_index)
 
 #define UTEST_I(FIXTURE, NAME, INDEX)                                          \
   UTEST_EXTERN struct utest_state_s utest_state;                               \
-  static void utest_run_##FIXTURE##_##NAME##_##INDEX(int *, struct FIXTURE *); \
-  static void utest_i_##FIXTURE##_##NAME##_##INDEX(int *utest_result,          \
+  static void utest_run_##FIXTURE##_##NAME##_##INDEX(int*, struct FIXTURE*);   \
+  static void utest_i_##FIXTURE##_##NAME##_##INDEX(int* utest_result,          \
                                                    size_t index) {             \
     struct FIXTURE fixture;                                                    \
-    memset(&fixture, 0, sizeof(fixture));                                      \
+    UTEST_MEMSET(fixture, 0, sizeof(fixture));                                 \
     utest_i_setup_##FIXTURE(utest_result, &fixture, index);                    \
     if (0 != *utest_result) {                                                  \
       return;                                                                  \
@@ -832,12 +902,12 @@ utest_type_printer(long long unsigned int i) {
     utest_uint64_t iUp;                                                        \
     for (i = 0; i < (INDEX); i++) {                                            \
       const size_t index = utest_state.tests_length++;                         \
-      const char *name_part = #FIXTURE "." #NAME;                              \
+      const char* name_part = #FIXTURE "." #NAME;                              \
       const size_t name_size = strlen(name_part) + 32;                         \
-      char *name = UTEST_PTR_CAST(char *, malloc(name_size));                  \
+      char* name = UTEST_PTR_CAST(char*, malloc(name_size));                   \
       utest_state.tests = UTEST_PTR_CAST(                                      \
-          struct utest_test_state_s *,                                         \
-          utest_realloc(UTEST_PTR_CAST(void *, utest_state.tests),             \
+          struct utest_test_state_s*,                                          \
+          utest_realloc(UTEST_PTR_CAST(void*, utest_state.tests),              \
                         sizeof(struct utest_test_state_s) *                    \
                             utest_state.tests_length));                        \
       utest_state.tests[index].func = &utest_i_##FIXTURE##_##NAME##_##INDEX;   \
@@ -847,17 +917,17 @@ utest_type_printer(long long unsigned int i) {
       UTEST_SNPRINTF(name, name_size, "%s/%" UTEST_PRIu64, name_part, iUp);    \
     }                                                                          \
   }                                                                            \
-  void utest_run_##FIXTURE##_##NAME##_##INDEX(int *utest_result,               \
-                                              struct FIXTURE *utest_fixture)
+  void utest_run_##FIXTURE##_##NAME##_##INDEX(int* utest_result,               \
+                                              struct FIXTURE* utest_fixture)
 
 UTEST_WEAK
-int utest_should_filter_test(const char *filter, const char *testcase);
-UTEST_WEAK int utest_should_filter_test(const char *filter,
-                                        const char *testcase) {
+int utest_should_filter_test(const char* filter, const char* testcase);
+UTEST_WEAK int utest_should_filter_test(const char* filter,
+                                        const char* testcase) {
   if (filter) {
-    const char *filter_cur = filter;
-    const char *testcase_cur = testcase;
-    const char *filter_wildcard = UTEST_NULL;
+    const char* filter_cur = filter;
+    const char* testcase_cur = testcase;
+    const char* filter_wildcard = UTEST_NULL;
 
     while (('\0' != *filter_cur) && ('\0' != *testcase_cur)) {
       if ('*' == *filter_cur) {
@@ -875,7 +945,9 @@ UTEST_WEAK int utest_should_filter_test(const char *filter,
                the wildcard case
             */
             break;
-          } else if (*filter_cur != *testcase_cur) {
+          }
+
+          if (*filter_cur != *testcase_cur) {
             /* otherwise our filter didn't match, so reset it */
             filter_cur = filter_wildcard;
           }
@@ -899,11 +971,11 @@ UTEST_WEAK int utest_should_filter_test(const char *filter,
         if (*testcase_cur != *filter_cur) {
           /* test case doesn't match filter */
           return 1;
-        } else {
-          /* move our filter and testcase forward */
-          testcase_cur++;
-          filter_cur++;
         }
+
+        /* move our filter and testcase forward */
+        testcase_cur++;
+        filter_cur++;
       }
     }
 
@@ -918,36 +990,36 @@ UTEST_WEAK int utest_should_filter_test(const char *filter,
   return 0;
 }
 
-static UTEST_INLINE FILE *utest_fopen(const char *filename, const char *mode) {
+static UTEST_INLINE FILE* utest_fopen(const char* filename, const char* mode) {
 #ifdef _MSC_VER
-  FILE *file;
+  FILE* file;
   if (0 == fopen_s(&file, filename, mode)) {
     return file;
-  } else {
-    return UTEST_NULL;
   }
+
+  return UTEST_NULL;
 #else
   return fopen(filename, mode);
 #endif
 }
 
-static UTEST_INLINE int utest_main(int argc, const char *const argv[]);
-int utest_main(int argc, const char *const argv[]) {
+static UTEST_INLINE int utest_main(int argc, const char* const argv[]);
+int utest_main(int argc, const char* const argv[]) {
   utest_uint64_t failed = 0;
   size_t index = 0;
-  size_t *failed_testcases = UTEST_NULL;
+  size_t* failed_testcases = UTEST_NULL;
   size_t failed_testcases_length = 0;
-  const char *filter = UTEST_NULL;
+  const char* filter = UTEST_NULL;
   utest_uint64_t ran_tests = 0;
 
-  enum colours { RESET, GREEN, RED };
+  enum colors { RESET, GREEN, RED };
 
   const int use_colours = UTEST_COLOUR_OUTPUT();
-  const char *colours[] = {"\033[0m", "\033[32m", "\033[31m"};
+  const char* colors[] = {"\033[0m", "\033[32m", "\033[31m"};
 
   if (!use_colours) {
-    for (index = 0; index < sizeof colours / sizeof colours[0]; index++) {
-      colours[index] = "";
+    for (index = 0; index < sizeof colors / sizeof colors[0]; index++) {
+      colors[index] = "";
     }
   }
   /* loop through all arguments looking for our options */
@@ -985,7 +1057,7 @@ int utest_main(int argc, const char *const argv[]) {
       return 0;
     }
   }
-  
+
   for (index = 0; index < utest_state.tests_length; index++) {
     if (utest_should_filter_test(filter, utest_state.tests[index].name)) {
       continue;
@@ -994,7 +1066,7 @@ int utest_main(int argc, const char *const argv[]) {
     ran_tests++;
   }
   printf("%s[==========]%s Running %" UTEST_PRIu64 " test cases.\n",
-         colours[GREEN], colours[RESET], UTEST_CAST(utest_uint64_t, ran_tests));
+         colors[GREEN], colors[RESET], UTEST_CAST(utest_uint64_t, ran_tests));
 
   if (utest_state.output) {
     fprintf(utest_state.output, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -1014,7 +1086,7 @@ int utest_main(int argc, const char *const argv[]) {
       continue;
     }
 
-    printf("%s[ RUN      ]%s %s\n", colours[GREEN], colours[RESET],
+    printf("%s[ RUN      ]%s %s\n", colors[GREEN], colors[RESET],
            utest_state.tests[index].name);
 
     if (utest_state.output) {
@@ -1033,29 +1105,30 @@ int utest_main(int argc, const char *const argv[]) {
 
     if (0 != result) {
       const size_t failed_testcase_index = failed_testcases_length++;
+      /* cppcheck-suppress memleakOnRealloc */
       failed_testcases = UTEST_PTR_CAST(
-          size_t *, utest_realloc(UTEST_PTR_CAST(void *, failed_testcases),
-                                  sizeof(size_t) * failed_testcases_length));
+          size_t*, utest_realloc(UTEST_PTR_CAST(void*, failed_testcases),
+                                 sizeof(size_t) * failed_testcases_length));
       failed_testcases[failed_testcase_index] = index;
       failed++;
-      printf("%s[  FAILED  ]%s %s (%" UTEST_PRId64 "ns)\n", colours[RED],
-             colours[RESET], utest_state.tests[index].name, ns);
+      printf("%s[  FAILED  ]%s %s (%" UTEST_PRId64 "ns)\n", colors[RED],
+             colors[RESET], utest_state.tests[index].name, ns);
     } else {
-      printf("%s[       OK ]%s %s (%" UTEST_PRId64 "ns)\n", colours[GREEN],
-             colours[RESET], utest_state.tests[index].name, ns);
+      printf("%s[       OK ]%s %s (%" UTEST_PRId64 "ns)\n", colors[GREEN],
+             colors[RESET], utest_state.tests[index].name, ns);
     }
   }
 
-  printf("%s[==========]%s %" UTEST_PRIu64 " test cases ran.\n", colours[GREEN],
-         colours[RESET], ran_tests);
-  printf("%s[  PASSED  ]%s %" UTEST_PRIu64 " tests.\n", colours[GREEN],
-         colours[RESET], ran_tests - failed);
+  printf("%s[==========]%s %" UTEST_PRIu64 " test cases ran.\n", colors[GREEN],
+         colors[RESET], ran_tests);
+  printf("%s[  PASSED  ]%s %" UTEST_PRIu64 " tests.\n", colors[GREEN],
+         colors[RESET], ran_tests - failed);
 
   if (0 != failed) {
     printf("%s[  FAILED  ]%s %" UTEST_PRIu64 " tests, listed below:\n",
-           colours[RED], colours[RESET], failed);
+           colors[RED], colors[RESET], failed);
     for (index = 0; index < failed_testcases_length; index++) {
-      printf("%s[  FAILED  ]%s %s\n", colours[RED], colours[RESET],
+      printf("%s[  FAILED  ]%s %s\n", colors[RED], colors[RESET],
              utest_state.tests[failed_testcases[index]].name);
     }
   }
@@ -1066,11 +1139,11 @@ int utest_main(int argc, const char *const argv[]) {
 
 cleanup:
   for (index = 0; index < utest_state.tests_length; index++) {
-    free(UTEST_PTR_CAST(void *, utest_state.tests[index].name));
+    free(UTEST_PTR_CAST(void*, utest_state.tests[index].name));
   }
 
-  free(UTEST_PTR_CAST(void *, failed_testcases));
-  free(UTEST_PTR_CAST(void *, utest_state.tests));
+  free(UTEST_PTR_CAST(void*, failed_testcases));
+  free(UTEST_PTR_CAST(void*, utest_state.tests));
 
   if (utest_state.output) {
     fclose(utest_state.output);
@@ -1096,7 +1169,7 @@ cleanup:
 */
 #define UTEST_MAIN()                                                           \
   UTEST_STATE();                                                               \
-  int main(int argc, const char *const argv[]) {                               \
+  int main(int argc, const char* const argv[]) {                               \
     return utest_main(argc, argv);                                             \
   }
 

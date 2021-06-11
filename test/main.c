@@ -23,24 +23,28 @@
 //
 // For more information, please refer to <http://unlicense.org/>
 
+#include <stdlib.h>
+#include <string.h>
 #include "utest.h"
 #include "subprocess.h"
 
 UTEST(utest_cmdline, filter_with_list) {
   struct subprocess_s process;
-  const char *command[3] = {"utest_test", "--list-tests", 0};
+  const char* command[3] = {"utest_test", "--list-tests", 0};
   int return_code;
-  FILE *stdout_file;
-  size_t index, kndex;
-  char *hits;
+  FILE* stdout_file;
+  size_t index;
+  size_t kndex;
+  char* hits;
 
 // 64k should be enough for anyone
 #define MAX_CHARS (64 * 1024)
   char buffer[MAX_CHARS] = {0};
 
-  hits = (char *)malloc(utest_state.tests_length);
+  hits = (char*)malloc(utest_state.tests_length);
   memset(hits, 0, utest_state.tests_length);
 
+  /* NOLINTNEXTLINE(clang-analyzer-unix.Malloc) */
   ASSERT_EQ(0,
             subprocess_create(command, subprocess_option_combined_stdout_stderr,
                               &process));
