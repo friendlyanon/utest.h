@@ -26,6 +26,13 @@ target_include_directories(
     "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
 )
 
+if(UTEST_USE_OLD_QPC)
+  target_compile_definitions(
+      utest_utest INTERFACE
+      "$<BUILD_INTERFACE:UTEST_USE_OLD_QPC>"
+  )
+endif()
+
 # ---- Install rules ----
 
 include(cmake/install-rules.cmake)

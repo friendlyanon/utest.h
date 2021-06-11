@@ -5,3 +5,11 @@ if(NOT UTEST_MODULE_PATH IN_LIST CMAKE_MODULE_PATH)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/utestTargets.cmake")
+
+if(NOT DEFINED UTEST_USE_OLD_QPC)
+  set(UTEST_USE_OLD_QPC ON)
+endif()
+
+if(UTEST_USE_OLD_QPC)
+  target_compile_definitions(utest::utest INTERFACE UTEST_USE_OLD_QPC)
+endif()

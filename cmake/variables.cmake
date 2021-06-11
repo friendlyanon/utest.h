@@ -39,3 +39,11 @@ if(NOT PROJECT_IS_TOP_LEVEL)
 else()
   list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 endif()
+
+# ---- Windows QPC ----
+
+option(UTEST_USE_OLD_QPC "Use the older QueryPerformanceCounter function on \
+Windows. Note that this should be enabled when compiling on Windows 10 and \
+the Windows 10 SDK is version 17763 or older, because the headers in those \
+versions have bugs in them. Enabled by default, because Windows 10 LTSC is \
+based on 17763" ON)
