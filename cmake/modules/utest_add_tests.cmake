@@ -5,8 +5,10 @@ set(script "")
 set(tests "")
 
 function(add_command NAME)
+  math(EXPR _argc "${ARGC} - 1")
   set(_args "")
-  foreach(_arg IN LISTS ARGN)
+  foreach(i RANGE 1 "${_argc}")
+    set(_arg "${ARGV${i}}")
     if(_arg MATCHES "[^-./:a-zA-Z0-9_]")
       set(_args "${_args} [==[${_arg}]==]")
     else()
@@ -26,7 +28,7 @@ endif()
 
 execute_process(
     COMMAND
-    "${TEST_EXECUTOR}" "${TEST_EXECUTABLE}" --list-tests
+    ${TEST_EXECUTOR} "${TEST_EXECUTABLE}" --list-tests
     OUTPUT_VARIABLE output
     OUTPUT_STRIP_TRAILING_WHITESPACE
     RESULT_VARIABLE result
@@ -47,25 +49,20 @@ foreach(test IN LISTS output)
   if(NOT TEST_XUNIT_OUTPUT_DIR STREQUAL "")
     # Turn testname into a valid filename by replacing all special characters with "-"
     string(REGEX REPLACE "[/\\:\"|<>]" "-" test_filename "${test}")
-    set(xunit_output_param "--output=${TEST_XUNIT_OUTPUT_DIR}/${prefix}${test_filename}${suffix}.xml")
+    set(xunit_output_param "--output=${TEST_XUNIT_OUTPUT_DIR}/${TEST_PREFIX}${test_filename}${TEST_SUFFIX}.xml")
   endif()
 
   # ...and add to script
   set(ctest_test_name "${TEST_PREFIX}${test}${TEST_SUFFIX}")
   add_command(
       add_test
-      "${ctest_test_name}"
-      ${TEST_EXECUTOR}
-      "${TEST_EXECUTABLE}"
-      "--filter=${test}"
-      "${xunit_output_param}"
-      ${TEST_EXTRA_ARGS}
+      "${ctest_test_name}" ${TEST_EXECUTOR} "${TEST_EXECUTABLE}"
+      "--filter=${test}" "${xunit_output_param}" ${TEST_EXTRA_ARGS}
   )
 
   add_command(
       set_tests_properties
-      "${ctest_test_name}"
-      PROPERTIES
+      "${ctest_test_name}" PROPERTIES
       WORKING_DIRECTORY "${TEST_WORKING_DIR}"
       ${TEST_PROPERTIES}
   )
@@ -75,7 +72,7 @@ endforeach()
 
 # Create a list of all discovered tests, which users may use to e.g. set
 # properties on the tests
-add_command(set ${TEST_LIST} ${tests})
+add_command(set "${TEST_LIST}" ${tests})
 
 # Write CTest script
 file(WRITE "${CTEST_FILE}" "${script}")

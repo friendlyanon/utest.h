@@ -122,11 +122,9 @@ function(utest_discover_tests TARGET)
       PROPERTY CROSSCOMPILING_EMULATOR
   )
   add_custom_command(
-      TARGET "${TARGET}"
-      POST_BUILD
+      TARGET "${TARGET}" POST_BUILD
       BYPRODUCTS "${ctest_tests_file}"
-      COMMAND
-      "${CMAKE_COMMAND}"
+      COMMAND "${CMAKE_COMMAND}"
       -D "TEST_EXECUTABLE=$<TARGET_FILE:${TARGET}>"
       -D "TEST_EXECUTOR=${crosscompiling_emulator}"
       -D "TEST_WORKING_DIR=${_WORKING_DIRECTORY}"
