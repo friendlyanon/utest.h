@@ -10,10 +10,15 @@ if(PROJECT_IS_TOP_LEVEL)
 endif()
 
 function(target_concrete_std target lang version)
+  set(extensions NO)
+  if(ARGC GREATER "3")
+    set(extensions "${ARGV3}")
+  endif()
   set_target_properties(
       "${target}" PROPERTIES
       "${lang}_STANDARD" "${version}"
       "${lang}_STANDARD_REQUIRED" YES
+      "${lang}_EXTENSIONS" "${extensions}"
   )
 endfunction()
 
@@ -21,7 +26,7 @@ link_libraries(utest::utest)
 include(utest_discover_tests)
 
 add_library(c90_lib OBJECT test.c)
-target_concrete_std(c90_lib C 90)
+target_concrete_std(c90_lib C 90 YES)
 
 add_library(c99_lib OBJECT test99.c)
 target_concrete_std(c99_lib C 99)
@@ -32,7 +37,7 @@ if("c_std_11" IN_LIST CMAKE_C_COMPILE_FEATURES)
 endif()
 
 add_library(cxx98_lib OBJECT test.cpp)
-target_concrete_std(cxx98_lib CXX 98)
+target_concrete_std(cxx98_lib CXX 98 YES)
 
 add_library(cxx11_lib OBJECT test11.cpp)
 target_concrete_std(cxx11_lib CXX 11)
