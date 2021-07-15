@@ -9,42 +9,33 @@ if(PROJECT_IS_TOP_LEVEL)
   enable_testing()
 endif()
 
-function(set_std target lang version)
-  set(feature "${version}")
-  if(feature STREQUAL "89")
-    set(feature 90)
-  endif()
-  string(TOUPPER "${lang}" ucase)
-  target_compile_features("${target}" PRIVATE "${lang}_std_${feature}")
-  # CMake does not add the flag for C standard
-  if(lang STREQUAL "c" AND "${CMAKE_${ucase}_COMPILER_ID}" MATCHES "^GNU$|Clang")
-    if(version STREQUAL "89")
-      # C89 doesn't support the inline keyword
-      set(lang gnu)
-    endif()
-    target_compile_options("${target}" PRIVATE "-std=${lang}${version}")
-  endif()
+function(target_concrete_std target lang version)
+  set_target_properties(
+      "${target}" PROPERTIES
+      "${lang}_STANDARD" "${version}"
+      "${lang}_STANDARD_REQUIRED" YES
+  )
 endfunction()
 
 link_libraries(utest::utest)
 include(utest_discover_tests)
 
 add_library(c90_lib OBJECT test.c)
-set_std(c90_lib c 89)
+target_concrete_std(c90_lib C 90)
 
 add_library(c99_lib OBJECT test99.c)
-set_std(c99_lib c 99)
+target_concrete_std(c99_lib C 99)
 
 if("c_std_11" IN_LIST CMAKE_C_COMPILE_FEATURES)
   add_library(c11_lib OBJECT test11.c type_printers.c)
-  set_std(c11_lib c 11)
+  target_concrete_std(c11_lib C 11)
 endif()
 
 add_library(cxx98_lib OBJECT test.cpp)
-set_std(cxx98_lib cxx 98)
+target_concrete_std(cxx98_lib CXX 98)
 
 add_library(cxx11_lib OBJECT test11.cpp)
-set_std(cxx11_lib cxx 11)
+target_concrete_std(cxx11_lib CXX 11)
 
 # Compile the main() function as C++, because there are C++ files in this test
 set_property(SOURCE main.c PROPERTY LANGUAGE CXX)
