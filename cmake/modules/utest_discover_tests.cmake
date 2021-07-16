@@ -33,6 +33,7 @@ same as the utest name; see also ``TEST_PREFIX`` and ``TEST_SUFFIX``.
                         [PROPERTIES name1 value1...]
                         [TEST_LIST var]
                         [XUNIT_OUTPUT_DIR dir]
+                        [DEPENDS target1...]
     )
 
   ``utest_discover_tests`` sets up a post-build command on the test executable
@@ -92,11 +93,23 @@ same as the utest name; see also ``TEST_PREFIX`` and ``TEST_SUFFIX``.
     suffix. This should be used instead of EXTRA_ARGS to avoid race conditions
     writing the XML result output when using parallel test execution.
 
+  ``DEPENDS target1...``
+    This argument can be used to append paths of shared library dependencies to
+    the ``PATH`` environment variable on Windows systems before executing the
+    test executable, so the DLLs can be loaded. Make sure the targets are not
+    wrapped in generator expressions, because they are queried for their
+    properties. Pass those targets as well which are otherwise conditionally
+    linked to.
+
+    If this argument is used, then make sure the :prop_test:`ENVIRONMENT`
+    property is not completely overwritten. See :prop_dir:`TEST_INCLUDE_FILES`
+    for providing your own scripts with custom content that could handle this.
+
 #]=======================================================================]
 
 function(utest_discover_tests TARGET)
   set(oneArgs WORKING_DIRECTORY TEST_PREFIX TEST_SUFFIX TEST_LIST XUNIT_OUTPUT_DIR)
-  set(multiArgs EXTRA_ARGS PROPERTIES)
+  set(multiArgs EXTRA_ARGS PROPERTIES DEPENDS)
   cmake_parse_arguments(PARSE_ARGV 1 "" "" "${oneArgs}" "${multiArgs}")
 
   set(bin_dir "${CMAKE_CURRENT_BINARY_DIR}")
@@ -107,6 +120,19 @@ function(utest_discover_tests TARGET)
 
   if(NOT _TEST_LIST)
     set(_TEST_LIST "${TARGET}_TESTS")
+  endif()
+
+  # Collect paths of DLL dependencies when the target system is Windows
+  set(dependency_paths "")
+  if(CMAKE_SYSTEM_NAME STREQUAL "Windows" AND DEFINED _DEPENDS)
+    foreach(dep IN LISTS _DEPENDS)
+      if(TARGET "${dep}")
+        get_target_property(type "${dep}" TYPE)
+        if(type STREQUAL "SHARED_LIBRARY")
+          list(APPEND dependency_paths "$<TARGET_FILE_DIR:${dep}>")
+        endif()
+      endif()
+    endforeach()
   endif()
 
   # Generate a unique name based on the extra arguments
@@ -133,6 +159,7 @@ function(utest_discover_tests TARGET)
       -D "TEST_PREFIX=${_TEST_PREFIX}"
       -D "TEST_SUFFIX=${_TEST_SUFFIX}"
       -D "TEST_LIST=${_TEST_LIST}"
+      -D "TEST_ENV_PATH=${dependency_paths}"
       -D "TEST_XUNIT_OUTPUT_DIR=${_XUNIT_OUTPUT_DIR}"
       -D "CTEST_FILE=${ctest_tests_file}"
       -P "${_UTEST_DISCOVER_TESTS_SCRIPT}"

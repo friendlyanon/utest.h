@@ -26,9 +26,21 @@ if(NOT EXISTS "${TEST_EXECUTABLE}")
   )
 endif()
 
+# Append TEST_ENV_PATH to PATH, so DLLs on Windows get loaded
+set(environment_path "")
+if(NOT TEST_ENV_PATH STREQUAL "")
+  list(REMOVE_ITEM TEST_ENV_PATH "")
+  set(ENV{PATH} "$ENV{PATH};${TEST_ENV_PATH}")
+  string(REPLACE "\\" "/" environment_path "$ENV{PATH}")
+  string(REGEX REPLACE ";+" ";" environment_path "${environment_path}")
+  string(REPLACE ";" "\\\\;" environment_path "${environment_path}")
+  set(environment_path ENVIRONMENT "PATH=${environment_path}")
+endif()
+
 execute_process(
     COMMAND
     ${TEST_EXECUTOR} "${TEST_EXECUTABLE}" --list-tests
+    WORKING_DIRECTORY "${TEST_WORKING_DIR}"
     OUTPUT_VARIABLE output
     OUTPUT_STRIP_TRAILING_WHITESPACE
     RESULT_VARIABLE result
@@ -65,6 +77,7 @@ foreach(test IN LISTS output)
       "${ctest_test_name}" PROPERTIES
       WORKING_DIRECTORY "${TEST_WORKING_DIR}"
       ${TEST_PROPERTIES}
+      ${environment_path} # This gets higher priority
   )
 
   list(APPEND tests "${ctest_test_name}")
