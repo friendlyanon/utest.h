@@ -69,8 +69,8 @@ same as the utest name; see also ``TEST_PREFIX`` and ``TEST_SUFFIX``.
   ``TEST_PREFIX prefix``
     Specifies a ``prefix`` to be prepended to the name of each discovered test
     case.  This can be useful when the same test executable is being used in
-    multiple calls to ``utest_discover_tests()`` but with different
-    ``TEST_SPEC`` or ``EXTRA_ARGS``.
+    multiple calls to ``utest_discover_tests`` but with different
+    ``EXTRA_ARGS``.
 
   ``TEST_SUFFIX suffix``
     Similar to ``TEST_PREFIX`` except the ``suffix`` is appended to the name of
@@ -84,25 +84,26 @@ same as the utest name; see also ``TEST_PREFIX`` and ``TEST_SUFFIX``.
   ``TEST_LIST var``
     Make the list of tests available in the variable ``var``, rather than the
     default ``<target>_TESTS``.  This can be useful when the same test
-    executable is being used in multiple calls to ``utest_discover_tests()``.
+    executable is being used in multiple calls to ``utest_discover_tests``.
     Note that this variable is only available in CTest.
 
   ``XUNIT_OUTPUT_DIR dir``
     If specified, the parameter ``--output=`` is passed to the test executable.
     The actual file name is the same as the test target, including prefix and
-    suffix. This should be used instead of EXTRA_ARGS to avoid race conditions
-    writing the XML result output when using parallel test execution.
+    suffix.  This should be used instead of ``EXTRA_ARGS`` to avoid race
+    conditions writing the XML result output when using parallel test
+    execution.
 
   ``DEPENDS target1...``
     This argument can be used to append paths of shared library dependencies to
     the ``PATH`` environment variable on Windows systems before executing the
-    test executable, so the DLLs can be loaded. Make sure the targets are not
+    test executable, so the DLLs can be loaded.  Make sure the targets are not
     wrapped in generator expressions, because they are queried for their
-    properties. Pass those targets as well which are otherwise conditionally
+    properties.  Pass those targets as well which are otherwise conditionally
     linked to.
 
     If this argument is used, then make sure the :prop_test:`ENVIRONMENT`
-    property is not completely overwritten. See :prop_dir:`TEST_INCLUDE_FILES`
+    property is not completely overwritten.  See :prop_dir:`TEST_INCLUDE_FILES`
     for providing your own scripts with custom content that could handle this.
 
 #]=======================================================================]
