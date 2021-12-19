@@ -64,7 +64,8 @@ same as the utest name; see also ``TEST_PREFIX`` and ``TEST_SUFFIX``.
 
   ``WORKING_DIRECTORY dir``
     Specifies the directory in which to run the discovered test cases.  If this
-    option is not provided, the current binary directory is used.
+    option is not provided, the current binary directory is used.  The property
+    :prop_tgt:`VS_DEBUGGER_WORKING_DIRECTORY` will be set to this value.
 
   ``TEST_PREFIX prefix``
     Specifies a ``prefix`` to be prepended to the name of each discovered test
@@ -102,9 +103,11 @@ same as the utest name; see also ``TEST_PREFIX`` and ``TEST_SUFFIX``.
     properties.  Pass those targets as well which are otherwise conditionally
     linked to.
 
-    If this argument is used, then make sure the :prop_test:`ENVIRONMENT`
-    property is not completely overwritten.  See :prop_dir:`TEST_INCLUDE_FILES`
-    for providing your own scripts with custom content that could handle this.
+    If this argument is used, then make sure the
+    :prop_tgt:`VS_DEBUGGER_ENVIRONMENT` and :prop_test:`ENVIRONMENT` properties
+    are not completely overwritten.  See :prop_dir:`TEST_INCLUDE_FILES` for
+    providing your own scripts with custom content that could handle the
+    latter one.
 
 #]=======================================================================]
 
@@ -118,6 +121,11 @@ function(utest_discover_tests TARGET)
   if(NOT _WORKING_DIRECTORY)
     set(_WORKING_DIRECTORY "${bin_dir}")
   endif()
+
+  set_property(
+      TARGET "${TARGET}" PROPERTY
+      VS_DEBUGGER_WORKING_DIRECTORY "${_WORKING_DIRECTORY}"
+  )
 
   if(NOT _TEST_LIST)
     set(_TEST_LIST "${TARGET}_TESTS")
@@ -134,6 +142,12 @@ function(utest_discover_tests TARGET)
         endif()
       endif()
     endforeach()
+    if(NOT dependency_paths STREQUAL "")
+      set_property(
+          TARGET "${TARGET}" PROPERTY
+          VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${dependency_paths}"
+      )
+    endif()
   endif()
 
   # Generate a unique name based on the extra arguments
